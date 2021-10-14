@@ -7,13 +7,13 @@ ratingFilterForm.addEventListener('submit', handleRatingFilterSubmit)
 const url = 'https://mock-data-api.firebaseio.com/webb21/products.json'
 const cart = []
 let productsData = []
-let ratingFilter = (product) => true
+let ratingFilter = () => true
 
 function handleRatingFilterSubmit(event) {
   event.preventDefault()
   const value = parseFloat(ratingFilterInput.value)
   if (value === 0) {
-    ratingFilter = (product) => true
+    ratingFilter = () => true
   } else {
     ratingFilter = (product) => product.rating >= value
   }
@@ -31,6 +31,26 @@ function groupBy(objects, key) {
     groups[value].push(object)
     return groups
   }, {})
+}
+
+function handleBuy(productToBuy) {
+  const id = productToBuy.id
+  const product = productsData.find((p) => p.id === id)
+  if (product.stock >= 1) {
+    const newProduct = { ...product, stock: product.stock - 1 }
+    productsData = productsData.map((p) =>
+      p.id !== product.id ? p : newProduct
+    )
+    addProductToCart(product)
+    updateProductCount(newProduct)
+  } else {
+    displayError('Not enough items in stock!')
+  }
+}
+
+function updateProductCount(product) {
+  const productElement = document.getElementById(`product-${product.id}`)
+  productElement.querySelector('.stock-data').innerText = product.stock
 }
 
 function addProductToCart(product) {
@@ -55,10 +75,11 @@ function renderProducts(products) {
 function renderProduct(product) {
   const productWrapper = document.createElement('div')
   productWrapper.className = 'product'
+  productWrapper.id = `product-${product.id}`
 
   const topWrapper = document.createElement('div')
-  topWrapper.appendChild(createTitle(product))
   topWrapper.appendChild(createImage(product))
+  topWrapper.appendChild(createTitle(product))
   topWrapper.appendChild(createDescription(product))
 
   const bottomWrapper = document.createElement('div')
@@ -80,7 +101,7 @@ function createImage(product) {
   const imageData = product.images[0]
   img.src = imageData.src.small
   img.alt = imageData.alt
-  img.addEventListener('click', () => addProductToCart(product))
+  img.addEventListener('click', () => handleBuy(product))
   return img
 }
 
@@ -102,7 +123,7 @@ function createTableHeader(product, fields) {
   const tableHeader = document.createElement('thead')
   const tableRow = document.createElement('tr')
   fields.forEach((field) =>
-    tableRow.appendChild(createTableData(capitalize(field)))
+    tableRow.appendChild(createTableHeadData(capitalize(field)))
   )
   tableHeader.appendChild(tableRow)
   return tableHeader
@@ -112,22 +133,31 @@ function createTableBody(product, fields) {
   const tableBody = document.createElement('tbody')
   const tableRow = document.createElement('tr')
   fields.forEach((field) =>
-    tableRow.appendChild(createTableData(product[field]))
+    tableRow.appendChild(createTableData(product, field))
   )
   tableBody.appendChild(tableRow)
   return tableBody
 }
 
-function createTableData(value) {
+function createTableHeadData(value) {
   const tableData = document.createElement('td')
   tableData.innerText = value
+  return tableData
+}
+
+function createTableData(product, field) {
+  const tableData = document.createElement('td')
+  tableData.innerText = product[field]
+  if (field === 'stock') {
+    tableData.className = 'stock-data'
+  }
   return tableData
 }
 
 function createBuyButton(product) {
   const button = document.createElement('button')
   button.innerText = 'Köp'
-  button.addEventListener('click', () => addProductToCart(product))
+  button.addEventListener('click', () => handleBuy(product))
   return button
 }
 
