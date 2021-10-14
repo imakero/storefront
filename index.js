@@ -55,13 +55,19 @@ function renderProducts(products) {
 function renderProduct(product) {
   const productWrapper = document.createElement('div')
   productWrapper.className = 'product'
-  productWrapper.appendChild(createTitle(product))
-  productWrapper.appendChild(createImage(product))
-  productWrapper.appendChild(createDescription(product))
-  productWrapper.appendChild(
+
+  const topWrapper = document.createElement('div')
+  topWrapper.appendChild(createTitle(product))
+  topWrapper.appendChild(createImage(product))
+  topWrapper.appendChild(createDescription(product))
+
+  const bottomWrapper = document.createElement('div')
+  bottomWrapper.appendChild(
     createInfoTable(product, ['price', 'rating', 'stock'])
   )
-  productWrapper.appendChild(createBuyButton(product))
+  bottomWrapper.appendChild(createBuyButton(product))
+  productWrapper.appendChild(topWrapper)
+  productWrapper.appendChild(bottomWrapper)
   productsContainer.appendChild(productWrapper)
 }
 
