@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Store Front</title>
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/@picocss/pico@latest/css/pico.min.css"
+    />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="header-wrapper">
+      <div class="cart-wrapper">
+        <div id="cart-container" class="cart-container"></div>
+        <div id="total-container"></div>
+      </div>
+      <form id="rating-filter-form">
+        <h2>Filter</h2>
+        <input
+          id="rating-filter-input"
+          type="number"
+          min="0"
+          max="5"
+          step="0.1"
+          value="0"
+        />
+        <button type="submit">Filtrera på rating</button>
+      </form>
+    </div>
+
+    <div id="products-container" class="products-grid"></div>
+    <script src="index.js"></script>
+  </body>
+</html>
