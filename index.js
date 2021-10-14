@@ -148,7 +148,6 @@ function calculateTotal(cart) {
 
 function renderCart(cart) {
   cartContainer.innerHTML = ''
-  cartContainer.appendChild(createHeader('Varukorg'))
   renderCartItems(cart)
 }
 
