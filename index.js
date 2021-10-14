@@ -133,7 +133,17 @@ function createBuyButton(product) {
 
 function renderTotal(cart) {
   totalContainer.innerHTML = ''
-  totalContainer.appendChild(createTotal(cart))
+  if (cart.length) {
+    totalContainer.appendChild(createTotal(cart))
+  } else {
+    totalContainer.appendChild(createEmptyCartMessage())
+  }
+}
+
+function createEmptyCartMessage() {
+  const p = document.createElement('p')
+  p.innerText = 'Varukorgen är tom'
+  return p
 }
 
 function createTotal(cart) {
