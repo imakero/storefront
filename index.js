@@ -33,7 +33,7 @@ function groupBy(objects, key) {
   }, {})
 }
 
-function handleBuy(productToBuy) {
+function handleBuy(productToBuy, domNode) {
   const id = productToBuy.id
   const product = productsData.find((p) => p.id === id)
   if (product.stock >= 1) {
@@ -44,8 +44,13 @@ function handleBuy(productToBuy) {
     addProductToCart(product)
     updateProductCount(newProduct)
   } else {
-    displayError('Not enough items in stock!')
+    displayError('Not enough items in stock!', 3, domNode)
   }
+}
+
+function displayError(message, seconds, domNode) {
+  domNode.setAttribute('data-tooltip', message)
+  setTimeout(() => domNode.removeAttribute('data-tooltip'), seconds * 1000)
 }
 
 function updateProductCount(product) {
@@ -73,7 +78,7 @@ function renderProducts(products) {
 }
 
 function renderProduct(product) {
-  const productWrapper = document.createElement('div')
+  const productWrapper = document.createElement('article')
   productWrapper.className = 'product'
   productWrapper.id = `product-${product.id}`
 
@@ -101,7 +106,7 @@ function createImage(product) {
   const imageData = product.images[0]
   img.src = imageData.src.small
   img.alt = imageData.alt
-  img.addEventListener('click', () => handleBuy(product))
+  //img.addEventListener('click', (event) => handleBuy(product, event.target))
   return img
 }
 
@@ -157,7 +162,7 @@ function createTableData(product, field) {
 function createBuyButton(product) {
   const button = document.createElement('button')
   button.innerText = 'Köp'
-  button.addEventListener('click', () => handleBuy(product))
+  button.addEventListener('click', (event) => handleBuy(product, event.target))
   return button
 }
 
