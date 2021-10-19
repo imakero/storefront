@@ -8,6 +8,7 @@ const url = 'https://mock-data-api.firebaseio.com/webb21/products.json'
 const cart = []
 let productsData = []
 let ratingFilter = () => true
+let errorTimeout = null
 
 function handleRatingFilterSubmit(event) {
   event.preventDefault()
@@ -50,7 +51,13 @@ function handleBuy(productToBuy, domNode) {
 
 function displayError(message, seconds, domNode) {
   domNode.setAttribute('data-tooltip', message)
-  setTimeout(() => domNode.removeAttribute('data-tooltip'), seconds * 1000)
+  if (errorTimeout) {
+    clearTimeout(errorTimeout)
+  }
+  errorTimeout = setTimeout(
+    () => domNode.removeAttribute('data-tooltip'),
+    seconds * 1000
+  )
 }
 
 function updateProductCount(product) {
