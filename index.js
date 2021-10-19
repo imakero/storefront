@@ -1,37 +1,186 @@
-const productsContainer = document.getElementById('products-container')
-const totalContainer = document.getElementById('total-container')
-const cartContainer = document.getElementById('cart-container')
-const ratingFilterForm = document.getElementById('rating-filter-form')
-const ratingFilterInput = document.getElementById('rating-filter-input')
-ratingFilterForm.addEventListener('submit', handleRatingFilterSubmit)
+const root = document.getElementById('root')
+
 const url = 'https://mock-data-api.firebaseio.com/webb21/products.json'
 const cart = []
+const tableFields = ['price', 'rating', 'stock']
+
 let productsData = []
 let ratingFilter = () => true
+let ratingThreshold = 0
 let errorTimeout = null
+let errorCleanup = null
 
-function handleRatingFilterSubmit(event) {
-  event.preventDefault()
-  const value = parseFloat(ratingFilterInput.value)
-  if (value === 0) {
-    ratingFilter = () => true
-  } else {
-    ratingFilter = (product) => product.rating >= value
-  }
-  renderProducts(productsData.filter(ratingFilter))
-}
-
-function capitalize(string) {
-  return string.charAt(0).toUpperCase() + string.slice(1)
-}
-
-function groupBy(objects, key) {
-  return objects.reduce((groups, object) => {
+/*
+ * Helper functions
+ */
+const capitalize = (string) => string.charAt(0).toUpperCase() + string.slice(1)
+const isEvent = (key) => key.startsWith('on')
+const notEvent = (key) => !isEvent(key)
+const groupBy = (objects, key) =>
+  objects.reduce((groups, object) => {
     const value = object[key]
     groups[value] = groups[value] || []
     groups[value].push(object)
     return groups
   }, {})
+const calculateTotal = (cart) =>
+  cart.reduce((sum, product) => sum + product.price, 0)
+
+/*
+ * Components
+ */
+
+function Header() {
+  return createElement('article', { className: 'header-wrapper' }, [
+    createElement(Cart, {}, []),
+    createElement(Filter, {}, []),
+  ])
+}
+
+function Cart() {
+  return createElement('div', { className: 'cart-wrapper' }, [
+    createElement('h2', {}, 'Varukorg'),
+    createElement('div', { className: 'cart-container' }, [
+      createElement(CartItems, { cart }, []),
+    ]),
+    createElement(Total, { cart }, []),
+  ])
+}
+
+function CartItems({ cart }) {
+  const itemsByName = groupBy(cart, 'name')
+  return createElement(
+    'ul',
+    {},
+    Object.entries(itemsByName).map(([name, products]) =>
+      createElement(
+        CartItem,
+        { name, quantity: products.length, price: products[0].price },
+        []
+      )
+    )
+  )
+}
+
+function CartItem({ name, quantity, price }) {
+  const quantityString = quantity === 1 ? '' : `${quantity} x `
+  const totalString = quantity === 1 ? '' : ` (${price * quantity})`
+  const cartRowString = `${quantityString}${name} - ${price}${totalString}`
+  return createElement('li', {}, cartRowString)
+}
+
+function Filter() {
+  return createElement('form', { onSubmit: handleRatingFilterSubmit }, [
+    createElement('h2', {}, 'Filter'),
+    createElement(
+      'input',
+      {
+        id: 'rating-filter-input',
+        type: 'number',
+        min: '0',
+        max: '5',
+        step: '0.1',
+        value: ratingThreshold.toString(),
+        onChange: (event) => (ratingThreshold = parseFloat(event.target.value)),
+      },
+      []
+    ),
+    createElement('button', { type: 'submit' }, 'Filtrera på rating'),
+  ])
+}
+
+function Total({ cart }) {
+  return cart.length
+    ? createElement('p', {}, `Total: ${calculateTotal(cart)}`)
+    : createElement('p', {}, 'Varukorgen är tom')
+}
+
+function Products({ products }) {
+  return createElement(
+    'div',
+    { className: 'products-grid' },
+    products.map((product) => createElement(Product, { product }, []))
+  )
+}
+
+function Product({ product }) {
+  const imageData = product.images[0]
+
+  return createElement(
+    'article',
+    { className: 'product', id: `product-${product.id}` },
+    [
+      createElement('div', {}, [
+        createElement(
+          'img',
+          { src: imageData.src.small, alt: imageData.alt },
+          []
+        ),
+        createElement('h2', {}, product.name),
+        createElement('p', {}, product.description),
+      ]),
+      createElement('div', {}, [
+        createElement(InfoTable, { product, fields: tableFields }, []),
+        createElement(
+          'button',
+          { onClick: (event) => handleBuy(product, event.target) },
+          'Köp'
+        ),
+      ]),
+    ]
+  )
+}
+
+function InfoTable({ product, fields }) {
+  const definedFields = fields.filter((field) => product[field] !== undefined)
+
+  return createElement('table', {}, [
+    createElement(InfoTableHead, { fields: definedFields }, []),
+    createElement(InfoTableBody, { product, fields: definedFields }),
+  ])
+}
+
+function InfoTableHead({ fields }) {
+  return createElement('thead', {}, [
+    createElement(
+      'tr',
+      {},
+      fields.map((field) => createElement('th', {}, capitalize(field)))
+    ),
+  ])
+}
+
+function InfoTableBody({ product, fields }) {
+  return createElement('tbody', {}, [
+    createElement(
+      'tr',
+      {},
+      fields.map((field) =>
+        createElement(InfoTableData, { product, field }, [])
+      )
+    ),
+  ])
+}
+
+function InfoTableData({ product, field }) {
+  const attributes = field === 'stock' ? { className: 'stock-data' } : {}
+
+  return createElement('td', attributes, product[field].toString())
+}
+
+/*
+ * Handlers
+ */
+
+function handleRatingFilterSubmit(event) {
+  event.preventDefault()
+
+  if (ratingThreshold === 0) {
+    ratingFilter = () => true
+  } else {
+    ratingFilter = (product) => product.rating >= ratingThreshold
+  }
+  renderSite()
 }
 
 function handleBuy(productToBuy, domNode) {
@@ -50,14 +199,13 @@ function handleBuy(productToBuy, domNode) {
 }
 
 function displayError(message, seconds, domNode) {
-  domNode.setAttribute('data-tooltip', message)
   if (errorTimeout) {
     clearTimeout(errorTimeout)
+    errorCleanup()
   }
-  errorTimeout = setTimeout(
-    () => domNode.removeAttribute('data-tooltip'),
-    seconds * 1000
-  )
+  domNode.setAttribute('data-tooltip', message)
+  errorCleanup = () => domNode.removeAttribute('data-tooltip')
+  errorTimeout = setTimeout(errorCleanup, seconds * 1000)
 }
 
 function updateProductCount(product) {
@@ -67,8 +215,45 @@ function updateProductCount(product) {
 
 function addProductToCart(product) {
   cart.push(product)
-  renderTotal(cart)
-  renderCart(cart)
+  renderSite()
+}
+
+/*
+ * Generate DOM nodes
+ */
+
+function createElement(type, attributes, children) {
+  if (typeof type === 'function') {
+    return type(attributes)
+  }
+  const element = document.createElement(type)
+  Object.keys(attributes)
+    .filter(notEvent)
+    .forEach((key) => {
+      element[key] = attributes[key]
+    })
+  Object.keys(attributes)
+    .filter(isEvent)
+    .forEach((key) => {
+      const eventType = key.substring(2).toLowerCase()
+      element.addEventListener(eventType, attributes[key])
+    })
+  if (typeof children === 'string') {
+    element.innerText = children
+  } else {
+    children.forEach((child) => {
+      element.appendChild(child)
+    })
+  }
+  return element
+}
+
+function renderSite() {
+  root.innerHTML = ''
+  root.appendChild(createElement(Header, {}, []))
+  root.appendChild(
+    createElement(Products, { products: productsData.filter(ratingFilter) }, [])
+  )
 }
 
 function getStoreData(url) {
@@ -77,163 +262,6 @@ function getStoreData(url) {
     .then((data) => {
       productsData = data
     })
-}
-
-function renderProducts(products) {
-  productsContainer.innerHTML = ''
-  products.forEach(renderProduct)
-}
-
-function renderProduct(product) {
-  const productWrapper = document.createElement('article')
-  productWrapper.className = 'product'
-  productWrapper.id = `product-${product.id}`
-
-  const topWrapper = document.createElement('div')
-  topWrapper.appendChild(createImage(product))
-  topWrapper.appendChild(createTitle(product))
-  topWrapper.appendChild(createDescription(product))
-
-  const bottomWrapper = document.createElement('div')
-  bottomWrapper.appendChild(
-    createInfoTable(product, ['price', 'rating', 'stock'])
-  )
-  bottomWrapper.appendChild(createBuyButton(product))
-  productWrapper.appendChild(topWrapper)
-  productWrapper.appendChild(bottomWrapper)
-  productsContainer.appendChild(productWrapper)
-}
-
-function createTitle(product) {
-  return createHeader(product.name)
-}
-
-function createImage(product) {
-  const img = document.createElement('img')
-  const imageData = product.images[0]
-  img.src = imageData.src.small
-  img.alt = imageData.alt
-  //img.addEventListener('click', (event) => handleBuy(product, event.target))
-  return img
-}
-
-function createDescription(product) {
-  const p = document.createElement('p')
-  p.innerText = product.description
-  return p
-}
-
-function createInfoTable(product, fields) {
-  const table = document.createElement('table')
-  const definedFields = fields.filter((field) => product[field] !== undefined)
-  table.appendChild(createTableHeader(product, definedFields))
-  table.appendChild(createTableBody(product, definedFields))
-  return table
-}
-
-function createTableHeader(product, fields) {
-  const tableHeader = document.createElement('thead')
-  const tableRow = document.createElement('tr')
-  fields.forEach((field) =>
-    tableRow.appendChild(createTableHeadData(capitalize(field)))
-  )
-  tableHeader.appendChild(tableRow)
-  return tableHeader
-}
-
-function createTableBody(product, fields) {
-  const tableBody = document.createElement('tbody')
-  const tableRow = document.createElement('tr')
-  fields.forEach((field) =>
-    tableRow.appendChild(createTableData(product, field))
-  )
-  tableBody.appendChild(tableRow)
-  return tableBody
-}
-
-function createTableHeadData(value) {
-  const tableData = document.createElement('td')
-  tableData.innerText = value
-  return tableData
-}
-
-function createTableData(product, field) {
-  const tableData = document.createElement('td')
-  tableData.innerText = product[field]
-  if (field === 'stock') {
-    tableData.className = 'stock-data'
-  }
-  return tableData
-}
-
-function createBuyButton(product) {
-  const button = document.createElement('button')
-  button.innerText = 'Köp'
-  button.addEventListener('click', (event) => handleBuy(product, event.target))
-  return button
-}
-
-function renderTotal(cart) {
-  totalContainer.innerHTML = ''
-  if (cart.length) {
-    totalContainer.appendChild(createTotal(cart))
-  } else {
-    totalContainer.appendChild(createEmptyCartMessage())
-  }
-}
-
-function createEmptyCartMessage() {
-  const p = document.createElement('p')
-  p.innerText = 'Varukorgen är tom'
-  return p
-}
-
-function createTotal(cart) {
-  const p = document.createElement('p')
-  p.innerText = `Total: ${calculateTotal(cart)}`
-  return p
-}
-
-function calculateTotal(cart) {
-  return cart.reduce((sum, product) => sum + product.price, 0)
-}
-
-function renderCart(cart) {
-  cartContainer.innerHTML = ''
-  renderCartItems(cart)
-}
-
-function renderCartItems(cart) {
-  const itemsByName = groupBy(cart, 'name')
-  const ul = document.createElement('ul')
-  Object.entries(itemsByName).forEach(([name, products]) =>
-    renderCartItem(ul, name, products.length, products[0].price)
-  )
-  cartContainer.appendChild(ul)
-}
-
-function renderCartItem(container, name, quantity, price) {
-  container.appendChild(createCartRow(name, quantity, price))
-}
-
-function createCartRow(name, quantity, price) {
-  const quantityString = quantity === 1 ? '' : `${quantity} x `
-  const totalString = quantity === 1 ? '' : ` (${price * quantity})`
-  const li = document.createElement('li')
-  li.innerText = `${quantityString}${name} - ${price}${totalString}`
-  return li
-}
-
-function createHeader(text) {
-  const h2 = document.createElement('h2')
-  h2.innerText = text
-  return h2
-}
-
-function renderSite() {
-  renderTotal(cart)
-  renderCart(cart)
-  renderProducts(productsData.filter(ratingFilter))
 }
 
 getStoreData(url).then(() => renderSite())
