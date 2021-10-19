@@ -55,8 +55,8 @@ function renderProducts(products) {
 function renderProduct(product) {
   const productWrapper = document.createElement('div')
   productWrapper.className = 'product'
-  productWrapper.appendChild(createTitle(product))
   productWrapper.appendChild(createImage(product))
+  productWrapper.appendChild(createTitle(product))
   productWrapper.appendChild(createDescription(product))
   productWrapper.appendChild(
     createInfoTable(product, ['price', 'rating', 'stock'])
